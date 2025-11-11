@@ -1,9 +1,32 @@
 # ToonSharp
 
-A .NET implementation of **TOON (Token-Oriented Object Notation)** - a compact, human-readable serialization format designed for Large Language Models with significantly reduced token usage compared to JSON.
+ToonSharp delivers a production-ready .NET implementation of **TOON (Token-Oriented Object Notation)**, the indentation-driven format built to minimize token usage for Large Language Models while keeping telemetry and audit logs human-readable.
 
 [![NuGet](https://img.shields.io/nuget/v/ToonSharp.svg)](https://www.nuget.org/packages/ToonSharp/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](../../LICENSE)
+
+---
+
+## Purpose
+
+TOON replaces verbose JSON punctuation with structured whitespace, explicit schema declarations, and optional length markers. The format is ideal when you need:
+
+- Lower token counts in prompts or completions sent to LLM providers.
+- Streaming-friendly logs and metrics that remain grepable.
+- Deterministic payloads that can be validated even when partially read by an agent.
+
+---
+
+## How the Format Works
+
+1. **Indentation signals nesting** - scopes advance by spaces instead of braces, so parsers only track the current depth.
+2. **Tabular arrays** - declare a row shape once (`items[2]{sku,qty}`) and then emit comma, tab, or pipe separated values.
+3. **Length markers** - optional `#3` markers tell consumers when a block will end, preventing drift in prompt streams.
+4. **Key folding** - single-child wrappers compact into dotted paths, but can be expanded while decoding to restore fully nested objects.
+
+Because redundant braces and keys disappear, TOON routinely shrinks uniform payloads by 30-60 percent versus well-formatted JSON.
+
+---
 
 ## Installation
 
@@ -11,14 +34,16 @@ A .NET implementation of **TOON (Token-Oriented Object Notation)** - a compact, 
 dotnet add package ToonSharp
 ```
 
+---
+
 ## Quick Start
 
-### Encoding
+### Encode
 
 ```csharp
 using ToonSharp;
 
-var data = new
+var payload = new
 {
     users = new[]
     {
@@ -27,82 +52,84 @@ var data = new
     }
 };
 
-string toon = ToonSharp.Encode(data);
-// Output:
-// users[2]{id,name,role}:
-//   1,Alice,admin
-//   2,Bob,user
+string toon = ToonSharp.Encode(payload);
+/*
+users[2]{id,name,role}:
+  1,Alice,admin
+  2,Bob,user
+*/
 ```
 
-### Decoding
+### Decode
 
 ```csharp
 using ToonSharp;
 
-string toon = @"
+const string toon = """
 users[2]{id,name,role}:
   1,Alice,admin
   2,Bob,user
-";
+""";
 
-var data = ToonSharp.Decode(toon);
-// Or deserialize to a specific type:
-var users = ToonSharp.Decode<UserList>(toon);
+var dynamicPayload = ToonSharp.Decode(toon);
+var typedPayload = ToonSharp.Decode<UserList>(toon);
 ```
 
-## Features
+### Log Example
 
-- 💸 **Token-efficient:** Typically 30-60% fewer tokens on large uniform arrays vs formatted JSON
-- 🤿 **LLM-friendly guardrails:** Explicit lengths and fields enable validation
-- 🍱 **Minimal syntax:** Removes redundant punctuation (braces, brackets, most quotes)
-- 📐 **Indentation-based structure:** Like YAML, uses whitespace instead of braces
-- 🧺 **Tabular arrays:** Declare keys once, stream data as rows
-- 🔗 **Optional key folding:** Collapses single-key wrapper chains into dotted paths
-- 🎯 **Zero external dependencies:** Uses only System.Text.Json
+```text
+level: info
+ts: 2024-05-01T10:00:00Z
+service: checkout
+items[2]{sku,qty}:
+  SKU-1,2
+  SKU-2,1
+```
 
-## Options
+The same event encoded as JSON would include repeated keys, quotes, and braces, adding roughly 60 extra characters per entry and inflating LLM token counts.
 
-### Encoding Options
+---
+
+## Configuration Surface
 
 ```csharp
-var options = new ToonOptions
+var encodeOptions = new ToonOptions
 {
-    Indent = 1,                           // Default 1 (minimal indentation)
-    Delimiter = ToonDelimiter.Tab,        // Comma, Tab, or Pipe
-    UseLengthMarker = true,               // Use # prefix for array lengths
-    KeyFolding = KeyFoldingMode.Safe,     // Collapse nested single-key objects
-    FlattenDepth = int.MaxValue           // Maximum key folding depth
+    Indent = 1,
+    Delimiter = ToonDelimiter.Tab,
+    UseLengthMarker = true,
+    KeyFolding = KeyFoldingMode.Safe,
+    FlattenDepth = int.MaxValue
 };
 
-string toon = ToonSharp.Encode(data, options);
-```
-
-### Decoding Options
-
-```csharp
-var options = new ToonDecodeOptions
+var decodeOptions = new ToonDecodeOptions
 {
-    Indent = 1,                              // Default 1 to match the encoder's minimal spacing
-    Strict = true,                           // Enforce array length validation
-    ExpandPaths = PathExpansionMode.Safe     // Reconstruct dotted keys into nested objects
+    Indent = 1,
+    Strict = true,
+    ExpandPaths = PathExpansionMode.Safe
 };
-
-var data = ToonSharp.Decode(toon, options);
 ```
+
+Use the same option set on both sides when you need lossless round-trips across services.
+
+---
+
+## Feature Highlights
+
+- **Token-aware serialization** - reduces punctuation and repeated field names to stay within LLM context windows.
+- **Deterministic and streamable** - indentation plus optional `#length` markers keep agents from drifting when consuming partial data.
+- **Human-first logging** - can be tailed like plain text yet parsed like structured data.
+- **Dependency-free** - the package only relies on the .NET base class library.
+
+---
 
 ## Compatibility
 
-- ✅ .NET 6, 7, 8, 9, and 10 (courtesy of the netstandard2.0 surface plus the modern TFMs)
-- ✅ .NET Standard 2.0 (covering .NET Framework 4.6.1+, .NET Core 2.0+, Mono, and anything implementing it)
+- .NET Standard 2.0 (covers .NET Framework 4.6.1+, .NET Core 2.0+, Mono, Unity)
+- .NET 6, 7, 8, and future LTS releases
 
-## Documentation
-
-For the complete TOON specification and examples, visit the [official TOON repository](https://github.com/toon-format/toon).
+---
 
 ## License
 
-MIT License - see [LICENSE](../../LICENSE) for details.
-
-## Credits
-
-ToonSharp is a .NET implementation of the TOON format. The original specification and TypeScript implementation can be found at [toon-format/toon](https://github.com/toon-format/toon).
+MIT License. See [LICENSE](../../LICENSE).
