@@ -39,6 +39,7 @@ artifacts/
 *.nupkg
 *.snupkg
 **/packages/*
+nupkg/
 
 # Test Results
 [Tt]est[Rr]esult*/
