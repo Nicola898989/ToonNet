@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <BaseTargetFrameworks>netstandard2.0;net6.0;net7.0;net8.0;net9.0</BaseTargetFrameworks>
+    <IncludeNet10 Condition="'$(IncludeNet10)' == ''">true</IncludeNet10>
+    <TargetFrameworks>$(BaseTargetFrameworks)</TargetFrameworks>
+    <TargetFrameworks Condition="'$(IncludeNet10)' == 'true'">$(BaseTargetFrameworks);net10.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+
+    <!-- NuGet Package Properties -->
+    <PackageId>ToonSharp</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>ToonSharp Contributors</Authors>
+    <Company>ToonSharp</Company>
+    <Description>A .NET implementation of TOON (Token-Oriented Object Notation) - a compact, human-readable serialization format designed for Large Language Models with significantly reduced token usage compared to JSON.</Description>
+    <PackageTags>toon;serialization;json;llm;tokens;format</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/toon-format/toon</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/toon-format/toon</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>ToonSharp.png</PackageIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- System.Text.Json for JSON serialization -->
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="ToonSharp.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
