@@ -1,8 +1,8 @@
-# ToonSharp
+# ToonNet
 
 Professional-grade .NET tooling for **TOON (Token-Oriented Object Notation)**, a compact, deterministic serialization format created for Large Language Models, high-volume logging, and low-bandwidth telemetry streams.
 
-[![NuGet](https://img.shields.io/nuget/v/ToonSharp.svg)](https://www.nuget.org/packages/ToonSharp/)
+[![NuGet](https://img.shields.io/nuget/v/ToonNet.svg)](https://www.nuget.org/packages/ToonNet/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ---
@@ -18,12 +18,12 @@ TOON is a line-oriented, indentation-aware notation that reuses familiar concept
 
 The result is a text format that stays friendly to humans, shrinks token counts by 30-60% on uniform payloads, and keeps parsers honest thanks to length annotations.
 
-## Why ToonSharp?
+## Why ToonNet?
 
 - **Token and storage savings** - fewer delimiters, repeated keys, and quotes lead to smaller prompts, cheaper LLM calls, and slimmer log files.
 - **LLM-aware validation** - deterministic indentation and optional length markers keep streamed data aligned with what a model expects.
 - **Predictable logging** - TOON can be tailed like plain text while still preserving structured data; no more bloated JSON blobs in observability stacks.
-- **Zero external dependencies** - ToonSharp targets .NET Standard 2.0 and modern TFMs without bundling third-party libraries.
+- **Zero external dependencies** - ToonNet targets .NET Standard 2.0 and modern TFMs without bundling third-party libraries.
 - **Symmetric APIs** - the same options drive both encoding and decoding, making round-trips safe across services and teams.
 
 ---
@@ -31,7 +31,7 @@ The result is a text format that stays friendly to humans, shrinks token counts 
 ## Installation
 
 ```bash
-dotnet add package ToonSharp
+dotnet add package ToonNet
 ```
 
 ---
@@ -41,7 +41,7 @@ dotnet add package ToonSharp
 ### Encode structured data
 
 ```csharp
-using ToonSharp;
+using ToonNet;
 
 var payload = new
 {
@@ -52,7 +52,7 @@ var payload = new
     }
 };
 
-string toon = ToonSharp.Encode(payload);
+string toon = ToonNet.Encode(payload);
 /*
 users[2]{id,name,role}:
   1,Alice,admin
@@ -63,7 +63,7 @@ users[2]{id,name,role}:
 ### Decode into dynamic or typed models
 
 ```csharp
-using ToonSharp;
+using ToonNet;
 
 const string toon = """
 users[2]{id,name,role}:
@@ -71,8 +71,8 @@ users[2]{id,name,role}:
   2,Bob,user
 """;
 
-var dynamicPayload = ToonSharp.Decode(toon);
-var typedPayload = ToonSharp.Decode<UserList>(toon);
+var dynamicPayload = ToonNet.Decode(toon);
+var typedPayload = ToonNet.Decode<UserList>(toon);
 ```
 
 ### Compare logging footprint
@@ -120,9 +120,9 @@ Apply the same option set on both encode and decode paths to guarantee round-tri
 
 ## Typical Workflow
 
-1. **Serialize** application events or DTOs with `ToonSharp.Encode`.
+1. **Serialize** application events or DTOs with `ToonNet.Encode`.
 2. **Transmit** the TOON text via log streams, queues, or HTTP bodies.
-3. **Replay or validate** data with `ToonSharp.Decode`, optionally binding to typed models.
+3. **Replay or validate** data with `ToonNet.Decode`, optionally binding to typed models.
 4. **Feed LLMs** with longer prompts thanks to the reduced token budget.
 
 ---
@@ -130,20 +130,20 @@ Apply the same option set on both encode and decode paths to guarantee round-tri
 ## Project Layout
 
 ```
-ToonSharp/
+ToonNet/
 ├── src/
-│   └── ToonSharp/
+│   └── ToonNet/
 │       ├── Encode/
 │       ├── Decode/
 │       ├── Shared/
-│       ├── ToonSharp.cs
-│       └── ToonSharp.csproj
+│       ├── ToonNet.cs
+│       └── ToonNet.csproj
 ├── tests/
-│   └── ToonSharp.Tests/
+│   └── ToonNet.Tests/
 │       ├── ToonEncoderTests.cs
 │       ├── ToonDecoderTests.cs
 │       └── ToonPerformanceTests.cs
-└── ToonSharp.sln
+└── ToonNet.sln
 ```
 
 ---
@@ -153,7 +153,7 @@ ToonSharp/
 ```bash
 dotnet test
 dotnet build
-cd src/ToonSharp && dotnet pack -c Release
+cd src/ToonNet && dotnet pack -c Release
 ```
 
 ---
