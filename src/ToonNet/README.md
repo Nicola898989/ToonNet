@@ -126,7 +126,7 @@ Use the same option set on both sides when you need lossless round-trips across 
 ## Compatibility
 
 - .NET Standard 2.0 (covers .NET Framework 4.6.1+, .NET Core 2.0+, Mono, Unity)
-- .NET 6, 7, 8, and future LTS releases
+- .NET 6, 7, 8, 9, 10
 
 ---
 
