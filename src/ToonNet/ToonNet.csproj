@@ -22,7 +22,12 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>ToonNet.png</PackageIcon>
+    <ApplicationIcon>ToonNet.png</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="ToonNet.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- System.Text.Json for JSON serialization -->
