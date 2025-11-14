@@ -57,7 +57,7 @@ internal class ValueDecoder
         if (lines.Count == 1 && !IsKeyValueLine(first))
         {
             var value = PrimitiveParser.ParsePrimitiveToken(first.Content.Trim());
-            return JsonValue.Create(value);
+            return CreateJsonValue(value);
         }
 
         // Default to object
@@ -97,25 +97,25 @@ internal class ValueDecoder
     private (string key, JsonNode? value) ParseKeyValuePair(ParsedLine line, LineCursor cursor, int depth)
     {
         cursor.Advance();
+        return ParseKeyValueContent(line.Content, line.LineNumber, depth, cursor);
+    }
 
-        // Find the colon separator
-        int colonIndex = FindColonIndex(line.Content);
+    private (string key, JsonNode? value) ParseKeyValueContent(string content, int lineNumber, int depth, LineCursor cursor)
+    {
+        int colonIndex = FindColonIndex(content);
         if (colonIndex == -1)
-            throw new FormatException($"Line {line.LineNumber}: Missing colon in key-value pair");
+            throw new FormatException($"Line {lineNumber}: Missing colon in key-value pair");
 
-        var keyPart = line.Content.Substring(0, colonIndex).Trim();
-        var valuePart = line.Content.Substring(colonIndex + 1).Trim();
+        var keyPart = content.Substring(0, colonIndex).Trim();
+        var valuePart = content.Substring(colonIndex + 1).Trim();
 
-        // Parse key (may include array syntax)
         string key = ParseKey(keyPart, out var arrayHeader);
 
-        // If there's an array header, parse as array
         if (arrayHeader != null)
         {
             arrayHeader.Key = key;
-            arrayHeader.LineNumber = line.LineNumber;
+            arrayHeader.LineNumber = lineNumber;
 
-            // Check for inline values
             if (!string.IsNullOrWhiteSpace(valuePart))
             {
                 return (key, DecodeInlineArray(arrayHeader, valuePart));
@@ -126,16 +126,13 @@ internal class ValueDecoder
             }
         }
 
-        // Regular value
         if (!string.IsNullOrWhiteSpace(valuePart))
         {
-            // Primitive value
             var primitiveValue = PrimitiveParser.ParsePrimitiveToken(valuePart);
-            return (key, JsonValue.Create(primitiveValue));
+            return (key, CreateJsonValue(primitiveValue));
         }
         else
         {
-            // Nested object or empty
             var next = cursor.Peek();
             if (next != null && next.Depth > depth)
             {
@@ -197,7 +194,7 @@ internal class ValueDecoder
             var obj = new JsonObject();
             for (int i = 0; i < Math.Min(values.Count, header.Fields!.Length); i++)
             {
-                obj[header.Fields[i]] = JsonValue.Create(values[i]);
+                obj[header.Fields[i]] = CreateJsonValue(values[i]);
             }
 
             array.Add(obj);
@@ -225,7 +222,7 @@ internal class ValueDecoder
 
         foreach (var value in values)
         {
-            array.Add(JsonValue.Create(value));
+            array.Add(CreateJsonValue(value));
         }
 
         return array;
@@ -281,20 +278,9 @@ internal class ValueDecoder
                         array.Add(nestedArray);
                     }
                 }
-                // Check if it's an object or primitive
-                else if (IsKeyValueLine(new ParsedLine { Content = content }))
+                else if (string.IsNullOrWhiteSpace(content))
                 {
-                    // Object: parse first property
-                    int colonIndex = FindColonIndex(content);
-                    var keyPart = content.Substring(0, colonIndex).Trim();
-                    var valuePart = content.Substring(colonIndex + 1).Trim();
-
-                    var key = PrimitiveParser.ParseKeyToken(keyPart);
-                    var value = PrimitiveParser.ParsePrimitiveToken(valuePart);
-
-                    var obj = new JsonObject { [key] = JsonValue.Create(value) };
-
-                    // Check for additional properties
+                    var obj = new JsonObject();
                     while (cursor.HasMore())
                     {
                         var next = cursor.Peek();
@@ -305,13 +291,60 @@ internal class ValueDecoder
                         obj[propKey] = propValue;
                     }
 
+                    while (cursor.HasMore())
+                    {
+                        var sibling = cursor.Peek();
+                        if (sibling == null || sibling.Depth != depth + 1)
+                            break;
+
+                        if (sibling.Content.StartsWith(ToonConstants.ListItemPrefix, StringComparison.Ordinal))
+                            break;
+
+                        var (propKey, propValue) = ParseKeyValuePair(sibling, cursor, depth + 1);
+                        obj[propKey] = propValue;
+                    }
+
+                    array.Add(obj);
+                }
+                // Check if it's an object or primitive
+                else if (IsKeyValueLine(new ParsedLine { Content = content }))
+                {
+                    var itemLines = new List<ParsedLine>
+                    {
+                        new ParsedLine
+                        {
+                            Content = content,
+                            Depth = depth + 1,
+                            Indent = (depth + 1),
+                            LineNumber = line.LineNumber
+                        }
+                    };
+
+                    while (cursor.HasMore())
+                    {
+                        var next = cursor.Peek();
+                        if (next == null)
+                            break;
+
+                        if (next.Depth < depth + 1)
+                            break;
+
+                        if (next.Depth == depth + 1 && next.Content.StartsWith(ToonConstants.ListItemPrefix, StringComparison.Ordinal))
+                            break;
+
+                        cursor.Advance();
+                        itemLines.Add(next);
+                    }
+
+                    var itemCursor = new LineCursor(itemLines);
+                    var obj = DecodeObject(itemCursor, depth + 1);
                     array.Add(obj);
                 }
                 else
                 {
                     // Primitive
                     var primitiveValue = PrimitiveParser.ParsePrimitiveToken(content);
-                    array.Add(JsonValue.Create(primitiveValue));
+                    array.Add(CreateJsonValue(primitiveValue));
                 }
             }
         }
@@ -462,6 +495,24 @@ internal class ValueDecoder
     {
         return FindColonIndex(line.Content) >= 0;
     }
+
+    private JsonNode? CreateJsonValue(object? value)
+    {
+        if (value == null)
+            return JsonValue.Create((string?)null);
+
+        return value switch
+        {
+            bool b => JsonValue.Create(b),
+            long l => JsonValue.Create(l),
+            ulong ul => JsonValue.Create(ul),
+            decimal dec => JsonValue.Create(dec),
+            double d => JsonValue.Create(d),
+            string s => JsonValue.Create(s),
+            _ => JsonValue.Create(value.ToString())
+        };
+    }
+
     private void HandleLengthMismatch(ArrayHeader header, int actualLength)
     {
         if (header.LineNumber <= 0)

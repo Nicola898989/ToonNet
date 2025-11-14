@@ -10,12 +10,14 @@ internal class LineWriter
 {
     private readonly StringBuilder _sb = new();
     private readonly int _indentSize;
+    private readonly string _newLine;
     private int _currentDepth;
     private bool _needsNewline;
 
-    public LineWriter(int indentSize)
+    public LineWriter(int indentSize, string newLine)
     {
         _indentSize = indentSize;
+        _newLine = string.IsNullOrEmpty(newLine) ? "\n" : newLine;
         _currentDepth = 0;
         _needsNewline = false;
     }
@@ -44,7 +46,7 @@ internal class LineWriter
     {
         if (_needsNewline)
         {
-            _sb.AppendLine();
+            _sb.Append(_newLine);
         }
 
         if (_currentDepth > 0)
@@ -69,7 +71,7 @@ internal class LineWriter
     /// </summary>
     public void WriteNewLine()
     {
-        _sb.AppendLine();
+        _sb.Append(_newLine);
         _needsNewline = false;
     }
 

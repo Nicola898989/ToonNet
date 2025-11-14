@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Xunit;
 
@@ -296,5 +298,207 @@ public class ToonEncoderTests
         Assert.Contains("displayName: Alice", result);
         Assert.Contains("role: Admin", result);
         Assert.DoesNotContain("DisplayName:", result);
+    }
+
+    [Fact]
+    public void Encode_KeyFolding_RespectsConfiguredFlattenDepth()
+    {
+        var data = new
+        {
+            api = new
+            {
+                v1 = new
+                {
+                    status = "ok"
+                }
+            }
+        };
+
+        var options = new ToonOptions
+        {
+            KeyFolding = KeyFoldingMode.Safe,
+            FlattenDepth = 1
+        };
+
+        var result = ToonNet.Encode(data, options);
+
+        Assert.DoesNotContain("api.v1", result);
+        Assert.Contains("api:", result);
+        Assert.Contains("v1:", result);
+    }
+
+    [Fact]
+    public void Encode_ListArray_PrintsFirstObjectPropertyInline()
+    {
+        var payload = new
+        {
+            history = new[]
+            {
+                new BlockEntry
+                {
+                    Details = new BlockDetails { Foo = 1, Bar = "a" },
+                    Label = "L1"
+                }
+            }
+        };
+
+        var toon = ToonNet.Encode(payload);
+
+        Assert.Contains("history[1]:", toon);
+        Assert.Contains("- details:", toon);
+    }
+
+    [Fact]
+    public void Encode_ListArray_WithObjectAsFirstProperty_RoundTrips()
+    {
+        var payload = new
+        {
+            blocks = new[]
+            {
+                new BlockEntry
+                {
+                    Details = new BlockDetails { Foo = 1, Bar = "alpha" },
+                    Label = "first"
+                },
+                new BlockEntry
+                {
+                    Details = new BlockDetails { Foo = 2, Baz = true },
+                    Label = "second"
+                }
+            }
+        };
+
+        var toon = ToonNet.Encode(payload);
+        var decoded = ToonNet.Decode(toon);
+        Assert.NotNull(decoded);
+
+        var blocks = decoded!.AsObject()["blocks"]!.AsArray();
+        Assert.Equal(2, blocks.Count);
+
+        var first = blocks[0]!.AsObject();
+        var firstDetails = first["details"]!.AsObject();
+        Assert.Equal(1, firstDetails["foo"]!.AsValue().GetValue<long>());
+        Assert.Equal("alpha", firstDetails["bar"]!.GetValue<string>());
+        Assert.Equal("first", first["label"]!.GetValue<string>());
+
+        var second = blocks[1]!.AsObject();
+        var secondDetails = second["details"]!.AsObject();
+        Assert.Equal(2, secondDetails["foo"]!.AsValue().GetValue<long>());
+        Assert.True(secondDetails["baz"]!.AsValue().GetValue<bool>());
+        Assert.Equal("second", second["label"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void Encode_ListArray_WithArrayAsFirstProperty_RoundTrips()
+    {
+        var payload = new
+        {
+            entries = new[]
+            {
+                new Entry
+                {
+                    Values = new[] { 1, 2, 3 },
+                    Note = "one"
+                },
+                new Entry
+                {
+                    Values = new[] { 4, 5 },
+                    Note = "two"
+                }
+            }
+        };
+
+        var toon = ToonNet.Encode(payload);
+        var decoded = ToonNet.Decode(toon);
+        Assert.NotNull(decoded);
+
+        var entries = decoded!.AsObject()["entries"]!.AsArray();
+        Assert.Equal(2, entries.Count);
+
+        var first = entries[0]!.AsObject();
+        var firstValues = first["values"]!.AsArray()
+            .Select(v => v!.AsValue().GetValue<long>())
+            .ToArray();
+        Assert.Equal(new long[] { 1, 2, 3 }, firstValues);
+        Assert.Equal("one", first["note"]!.GetValue<string>());
+
+        var second = entries[1]!.AsObject();
+        var secondValues = second["values"]!.AsArray()
+            .Select(v => v!.AsValue().GetValue<long>())
+            .ToArray();
+        Assert.Equal(new long[] { 4, 5 }, secondValues);
+        Assert.Equal("two", second["note"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void Encode_ListArray_ObjectProperties_AreIndented()
+    {
+        var payload = new
+        {
+            blocks = new[]
+            {
+                new BlockEntry
+                {
+                    Details = new BlockDetails { Foo = 1, Bar = "alpha" },
+                    Label = "first"
+                }
+            }
+        };
+
+        var toon = ToonNet.Encode(payload).Replace("\r", string.Empty);
+
+        Assert.Contains("- details:\n  foo: 1", toon);
+    }
+
+    [Fact]
+    public void Encode_ListArray_SubsequentPropertiesRemainIndented()
+    {
+        var payload = new
+        {
+            blocks = new[]
+            {
+                new BlockEntry
+                {
+                    Details = new BlockDetails { Foo = 5, Baz = true },
+                    Label = "primary"
+                }
+            }
+        };
+
+        var toon = ToonNet.Encode(payload).Replace("\r", string.Empty);
+
+        Assert.Contains("- details:", toon);
+        Assert.Contains("\n label: primary", toon);
+    }
+
+    private class BlockEntry
+    {
+        [JsonPropertyName("details")]
+        public BlockDetails Details { get; set; } = new();
+
+        [JsonPropertyName("label")]
+        public string Label { get; set; } = string.Empty;
+
+    }
+
+    private class BlockDetails
+    {
+        [JsonPropertyName("foo")]
+        public int Foo { get; set; }
+
+        [JsonPropertyName("bar")]
+        public string? Bar { get; set; }
+
+        [JsonPropertyName("baz")]
+        public bool? Baz { get; set; }
+    }
+
+    private class Entry
+    {
+        [JsonPropertyName("values")]
+        public int[] Values { get; set; } = Array.Empty<int>();
+
+        [JsonPropertyName("note")]
+        public string Note { get; set; } = string.Empty;
     }
 }

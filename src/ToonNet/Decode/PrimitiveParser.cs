@@ -42,15 +42,19 @@ internal static class PrimitiveParser
             return null;
 
         // Number
-        if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
-        {
-            // Try to preserve integer types
-            if (number == Math.Floor(number) && number >= long.MinValue && number <= long.MaxValue)
-            {
-                return (long)number;
-            }
+        if (long.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var longValue))
+            return longValue;
+
+        if (ulong.TryParse(token, NumberStyles.Integer, CultureInfo.InvariantCulture, out var ulongValue))
+            return ulongValue;
+
+        if (decimal.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var decimalValue) ||
+            decimal.TryParse(token, NumberStyles.Float, CultureInfo.CurrentCulture, out decimalValue))
+            return decimalValue;
+
+        if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) ||
+            double.TryParse(token, NumberStyles.Float, CultureInfo.CurrentCulture, out number))
             return number;
-        }
 
         // Unquoted string
         return token;

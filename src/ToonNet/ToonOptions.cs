@@ -42,10 +42,16 @@ public class ToonOptions
     /// </summary>
     public int FlattenDepth { get; set; } = int.MaxValue;
 
-    /// <summary>
-    /// Gets or sets the <see cref="JsonSerializerOptions"/> used when normalizing CLR objects
-    /// before l'encoding. Permette di personalizzare naming policy, converter ed escape.
-    /// Default è <c>null</c> (usa le opzioni standard di System.Text.Json).
-    /// </summary>
-    public JsonSerializerOptions? SerializerOptions { get; set; }
-}
+        /// <summary>
+        /// Gets or sets the <see cref="JsonSerializerOptions"/> used when normalizing CLR objects
+        /// before l'encoding. Permette di personalizzare naming policy, converter ed escape.
+        /// Default è <c>null</c> (usa le opzioni standard di System.Text.Json).
+        /// </summary>
+        public JsonSerializerOptions? SerializerOptions { get; set; }
+
+        /// <summary>
+        /// Gets or sets the newline sequence used in the encoded output.
+        /// Default is "\n" per massima compatibilità tra piattaforme.
+        /// </summary>
+        public string NewLine { get; set; } = "\n";
+    }

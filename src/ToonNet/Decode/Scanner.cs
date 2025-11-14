@@ -14,7 +14,7 @@ internal class Scanner
 
     public Scanner(int indentSize, bool strict)
     {
-        _indentSize = indentSize;
+        _indentSize = Math.Max(1, indentSize);
         _strict = strict;
     }
 

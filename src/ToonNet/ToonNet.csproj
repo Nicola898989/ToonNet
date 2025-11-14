@@ -22,7 +22,6 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>ToonNet.png</PackageIcon>
-    <ApplicationIcon>ToonNet.png</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

@@ -20,7 +20,7 @@ internal class ValueEncoder
     public ValueEncoder(ToonOptions options)
     {
         _options = options;
-        _writer = new LineWriter(options.Indent);
+        _writer = new LineWriter(options.Indent, options.NewLine);
         _serializerOptions = options.SerializerOptions ?? DefaultSerializerOptions;
     }
 
@@ -63,9 +63,10 @@ internal class ValueEncoder
     /// <summary>
     /// Encodes a key-value pair.
     /// </summary>
-    private void EncodeKeyValuePair(string key, JsonElement value, int depth, HashSet<string>? scopeLiteralKeys = null)
+    private void EncodeKeyValuePair(string key, JsonElement value, int depth, HashSet<string>? scopeLiteralKeys = null, string? linePrefix = null)
     {
         var encodedKey = PrimitiveEncoder.EncodeKey(key);
+        string ApplyPrefix(string content) => linePrefix == null ? content : $"{linePrefix}{content}";
 
         // Try key folding if enabled
         if (_options.KeyFolding == KeyFoldingMode.Safe &&
@@ -80,13 +81,13 @@ internal class ValueEncoder
         // Handle different value types
         if (value.ValueKind == JsonValueKind.Array)
         {
-            EncodeArray(key, value, depth);
+            EncodeArray(key, value, depth, linePrefix);
         }
         else if (value.ValueKind == JsonValueKind.Object)
         {
             if (value.EnumerateObject().Any())
             {
-                _writer.WriteLine($"{encodedKey}{ToonConstants.Colon}");
+                _writer.WriteLine(ApplyPrefix($"{encodedKey}{ToonConstants.Colon}"));
                 _writer.IncreaseDepth();
                 EncodeObject(value, depth + 1);
                 _writer.DecreaseDepth();
@@ -94,14 +95,14 @@ internal class ValueEncoder
             else
             {
                 // Empty object
-                _writer.WriteLine($"{encodedKey}{ToonConstants.Colon}");
+                _writer.WriteLine(ApplyPrefix($"{encodedKey}{ToonConstants.Colon}"));
             }
         }
         else
         {
             // Primitive value
             var encodedValue = EncodePrimitiveValue(value);
-            _writer.WriteLine($"{encodedKey}{ToonConstants.Colon} {encodedValue}");
+            _writer.WriteLine(ApplyPrefix($"{encodedKey}{ToonConstants.Colon} {encodedValue}"));
         }
     }
 
@@ -112,9 +113,13 @@ internal class ValueEncoder
     {
         var chain = new List<string> { key };
         var current = value;
+        var maxSegments = _options.FlattenDepth <= 0 ? int.MaxValue : _options.FlattenDepth;
+
+        if (maxSegments <= 1)
+            return false;
 
         // Follow the chain of single-key objects
-        while (current.ValueKind == JsonValueKind.Object)
+        while (current.ValueKind == JsonValueKind.Object && chain.Count < maxSegments)
         {
             var props = current.EnumerateObject().ToList();
             if (props.Count != 1)
@@ -130,9 +135,6 @@ internal class ValueEncoder
 
             chain.Add(nextSegment);
             current = prop.Value;
-
-            if (chain.Count >= _options.FlattenDepth)
-                break;
         }
 
         // Need at least 2 keys to fold
@@ -288,20 +290,14 @@ internal class ValueEncoder
                 if (props.Count > 0)
                 {
                     var nestedLiteralKeys = CollectLiteralKeys(item);
-
-                    // First property on the same line as the marker
                     var firstProp = props[0];
-                    var encodedKey = PrimitiveEncoder.EncodeKey(firstProp.Name);
-                    var encodedValue = EncodePrimitiveValue(firstProp.Value);
-                    _writer.WriteLine($"{ToonConstants.ListItemPrefix}{encodedKey}{ToonConstants.Colon} {encodedValue}");
 
-                    // Remaining properties indented
-                    _writer.IncreaseDepth();
+                    EncodeKeyValuePair(firstProp.Name, firstProp.Value, depth + 2, nestedLiteralKeys, ToonConstants.ListItemPrefix);
+
                     foreach (var prop in props.Skip(1))
                     {
                         EncodeKeyValuePair(prop.Name, prop.Value, depth + 2, nestedLiteralKeys);
                     }
-                    _writer.DecreaseDepth();
                 }
                 else
                 {
