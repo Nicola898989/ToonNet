@@ -118,6 +118,57 @@ Apply the same option set on both encode and decode paths to guarantee round-tri
 
 ---
 
+## Advanced Usage
+
+### Key folding and path expansion
+
+```csharp
+var options = new ToonOptions
+{
+    KeyFolding = KeyFoldingMode.Safe,
+    FlattenDepth = 5
+};
+
+var encoded = ToonNet.Encode(payload, options);
+var decoded = ToonNet.Decode(encoded, new ToonDecodeOptions
+{
+    ExpandPaths = PathExpansionMode.Safe
+});
+```
+
+### Custom newline (Windows-style `\r\n`)
+
+```csharp
+var options = new ToonOptions { NewLine = "\r\n" };
+var toon = ToonNet.Encode(payload, options);
+```
+
+### Alternative delimiters for tabular arrays
+
+```csharp
+var options = new ToonOptions { Delimiter = ToonDelimiter.Pipe };
+/*
+users[2|]{id|role}:
+  1|admin
+  2|editor
+*/
+```
+
+### Custom serializer options (camelCase, enums as strings)
+
+```csharp
+var serializerOptions = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    Converters = { new JsonStringEnumConverter() }
+};
+
+var options = new ToonOptions { SerializerOptions = serializerOptions };
+var toon = ToonNet.Encode(payload, options);
+```
+
+---
+
 ## Typical Workflow
 
 1. **Serialize** application events or DTOs with `ToonNet.Encode`.
