@@ -471,6 +471,41 @@ public class ToonEncoderTests
         Assert.Contains("\n label: primary", toon);
     }
 
+    [Fact]
+    public void Encode_ListArray_WithEmptyObject_RoundTrips()
+    {
+        var payload = new
+        {
+            items = new[]
+            {
+                new Dictionary<string, object?>(),
+                new Dictionary<string, object?> { ["id"] = 5 }
+            }
+        };
+
+        var toon = ToonNet.Encode(payload);
+        var decoded = ToonNet.Decode(toon);
+        Assert.NotNull(decoded);
+
+        var items = decoded!.AsObject()["items"]!.AsArray();
+        Assert.NotNull(items);
+        Assert.IsType<JsonObject>(items[0]);
+        Assert.Empty(items[0]!.AsObject());
+        Assert.Equal(5, items[1]!["id"]!.AsValue().GetValue<long>());
+    }
+
+    [Fact]
+    public void Encode_RespectsCustomNewLineOption()
+    {
+        var payload = new { user = new { id = 1, name = "Alice" } };
+        var options = new ToonOptions { NewLine = "\r\n" };
+
+        var result = ToonNet.Encode(payload, options);
+
+        Assert.Contains("\r\n", result);
+        Assert.DoesNotContain("\n\n", result);
+    }
+
     private class BlockEntry
     {
         [JsonPropertyName("details")]

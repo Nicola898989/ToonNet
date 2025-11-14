@@ -625,6 +625,53 @@ metadata:
         AssertRoundTrip(sample);
     }
 
+    [Fact]
+    public void RoundTrip_ListItemWithArrayAsFirstProperty()
+    {
+        var payload = new[]
+        {
+            new EntryWithArrayFirst
+            {
+                Values = new[] { 1, 2 },
+                Label = "a"
+            },
+            new EntryWithArrayFirst
+            {
+                Values = new[] { 3 },
+                Label = "b"
+            }
+        };
+
+        AssertRoundTrip(payload);
+    }
+
+    [Fact]
+    public void RoundTrip_ListItemWithArrayAndNestedObject()
+    {
+        var payload = new[]
+        {
+            new ComplexEntry
+            {
+                Values = new[] { 1, 2, 3 },
+                Extras = new PrimitivePayload
+                {
+                    Name = "extras",
+                    Count = 2,
+                    Approved = true,
+                    Ratio = 1.2,
+                    Money = 12.3m,
+                    Created = DateTime.SpecifyKind(new DateTime(2023, 4, 1), DateTimeKind.Utc),
+                    LastUpdated = null,
+                    Notes = new[] { "a" },
+                    Scores = new List<int?> { 1, null },
+                    OptionalFlag = false
+                }
+            }
+        };
+
+        AssertRoundTrip(payload);
+    }
+
     private static void AssertObjectsEqual<T>(T expected, T? actual)
     {
         Assert.NotNull(actual);
@@ -764,6 +811,18 @@ metadata:
     {
         public DeepNode?[] Nodes { get; set; } = Array.Empty<DeepNode?>();
         public PrimitivePayload? Summary { get; set; }
+    }
+
+    private class EntryWithArrayFirst
+    {
+        public int[] Values { get; set; } = Array.Empty<int>();
+        public string Label { get; set; } = string.Empty;
+    }
+
+    private class ComplexEntry
+    {
+        public int[] Values { get; set; } = Array.Empty<int>();
+        public PrimitivePayload Extras { get; set; } = new();
     }
 
     private static DeepNode BuildDeepNode(int depth)
