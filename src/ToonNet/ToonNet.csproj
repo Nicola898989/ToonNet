@@ -11,7 +11,7 @@
 
     <!-- NuGet Package Properties -->
     <PackageId>ToonNet</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Authors>Nicola Santoro</Authors>
     <Description>ToonNet brings TOON (Token-Oriented Object Notation) to .NET with a compact, human-readable serialization format built for Large Language Models and high-volume logging.</Description>
     <PackageTags>toon;serialization;json;llm;tokens;format</PackageTags>

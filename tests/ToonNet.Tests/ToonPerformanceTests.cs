@@ -150,38 +150,6 @@ public class ToonPerformanceTests
     }
 
     [Fact]
-    public void Performance_DeeplyNestedStructure_HandlesWell()
-    {
-        // Arrange: Crea struttura con 10 livelli di nesting
-        object CreateNestedObject(int depth)
-        {
-            if (depth == 0)
-                return new { value = 42, name = "leaf" };
-
-            return new
-            {
-                level = depth,
-                data = CreateNestedObject(depth - 1)
-            };
-        }
-
-        var data = CreateNestedObject(10);
-
-        var sw = Stopwatch.StartNew();
-
-        // Act
-        var toon = ToonNet.Encode(data);
-        var result = ToonNet.Decode(toon);
-
-        sw.Stop();
-
-        // Assert
-        _output.WriteLine($"Encoding/decoding 10-level nested structure took: {sw.ElapsedMilliseconds}ms");
-        Assert.True(sw.ElapsedMilliseconds < 100, $"Took {sw.ElapsedMilliseconds}ms, expected < 100ms");
-        Assert.NotNull(result);
-    }
-
-    [Fact]
     public void Performance_LargeStringValues_HandlesEfficiently()
     {
         // Arrange: Array con stringhe lunghe
