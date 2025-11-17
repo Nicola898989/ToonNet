@@ -1,4 +1,4 @@
-namespace ToonNet;
+namespace ToonNetSerializer;
 
 /// <summary>
 /// Key folding mode for collapsing single-key wrapper chains into dotted paths.

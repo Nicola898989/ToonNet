@@ -5,7 +5,7 @@ using System.Linq;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace ToonNet.Tests;
+namespace ToonNetSerializer.Tests;
 
 public class ToonPerformanceTests
 {

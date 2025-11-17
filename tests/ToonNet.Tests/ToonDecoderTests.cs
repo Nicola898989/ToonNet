@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Xunit;
 
-namespace ToonNet.Tests;
+namespace ToonNetSerializer.Tests;
 
 public class ToonDecoderTests
 {

@@ -1,4 +1,4 @@
-namespace ToonNet;
+namespace ToonNetSerializer;
 
 /// <summary>
 /// Defines how the decoder reacts to array length mismatches when strict mode is disabled.

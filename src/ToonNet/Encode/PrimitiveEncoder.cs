@@ -4,9 +4,9 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using ToonNet.Shared;
+using ToonNetSerializer.Shared;
 
-namespace ToonNet.Encode;
+namespace ToonNetSerializer.Encode;
 
 /// <summary>
 /// Handles encoding of primitive values and quoting logic.

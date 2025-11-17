@@ -1,10 +1,10 @@
 using System;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using ToonNet.Decode;
-using ToonNet.Encode;
+using ToonNetSerializer.Decode;
+using ToonNetSerializer.Encode;
 
-namespace ToonNet;
+namespace ToonNetSerializer;
 
 /// <summary>
 /// Espone i metodi di alto livello per codificare e decodificare il formato TOON.

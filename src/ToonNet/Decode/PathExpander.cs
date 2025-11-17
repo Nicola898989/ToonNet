@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Nodes;
 
-namespace ToonNet.Decode;
+namespace ToonNetSerializer.Decode;
 
 /// <summary>
 /// Handles expansion of dotted-path keys into nested object structures.

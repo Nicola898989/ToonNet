@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Text;
 
-namespace ToonNet.Shared;
+namespace ToonNetSerializer.Shared;
 
 /// <summary>
 /// Utility methods for string manipulation.

@@ -1,4 +1,4 @@
-namespace ToonNet.Decode;
+namespace ToonNetSerializer.Decode;
 
 /// <summary>
 /// Represents a parsed line with indentation information.

@@ -1,4 +1,4 @@
-namespace ToonNet;
+namespace ToonNetSerializer;
 
 /// <summary>
 /// Constants used throughout the TOON encoder and decoder.

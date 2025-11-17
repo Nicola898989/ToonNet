@@ -4,11 +4,11 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using ToonNet;
+using ToonNetSerializer;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace ToonNet.Tests;
+namespace ToonNetSerializer.Tests;
 
 public class ToonVsJsonComparisonTests
 {

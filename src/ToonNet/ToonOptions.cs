@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace ToonNet;
+namespace ToonNetSerializer;
 
 /// <summary>
 /// Options for encoding values to TOON format.

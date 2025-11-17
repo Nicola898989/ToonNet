@@ -1,4 +1,4 @@
-namespace ToonNet;
+namespace ToonNetSerializer;
 
 /// <summary>
 /// Path expansion mode for reconstructing dotted keys into nested objects during decoding.

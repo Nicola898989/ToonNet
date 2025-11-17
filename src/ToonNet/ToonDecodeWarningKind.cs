@@ -1,4 +1,4 @@
-namespace ToonNet;
+namespace ToonNetSerializer;
 
 /// <summary>
 /// Types of warnings emitted by the TOON decoder.

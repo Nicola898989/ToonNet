@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ToonNet;
+namespace ToonNetSerializer;
 
 /// <summary>
 /// Options for decoding TOON format strings.

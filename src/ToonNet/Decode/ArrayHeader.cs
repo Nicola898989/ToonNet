@@ -1,4 +1,4 @@
-namespace ToonNet.Decode;
+namespace ToonNetSerializer.Decode;
 
 /// <summary>
 /// Information parsed from an array header.

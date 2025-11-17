@@ -5,9 +5,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
-using ToonNet.Shared;
+using ToonNetSerializer.Shared;
 
-namespace ToonNet.Decode;
+namespace ToonNetSerializer.Decode;
 
 /// <summary>
 /// Main decoder logic for parsing TOON format strings.

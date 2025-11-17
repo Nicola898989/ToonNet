@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using ToonNet.Shared;
+using ToonNetSerializer.Shared;
 
-namespace ToonNet.Decode;
+namespace ToonNetSerializer.Decode;
 
 /// <summary>
 /// Parses primitive tokens and quoted strings.

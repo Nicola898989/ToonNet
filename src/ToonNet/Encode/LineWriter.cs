@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 
-namespace ToonNet.Encode;
+namespace ToonNetSerializer.Encode;
 
 /// <summary>
 /// Manages indentation and line output for TOON encoding.

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace ToonNet.Encode;
+namespace ToonNetSerializer.Encode;
 
 /// <summary>
 /// Main encoder logic for converting values to TOON format.
