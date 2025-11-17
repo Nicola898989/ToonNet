@@ -41,7 +41,7 @@ dotnet add package ToonNet
 ### Encode
 
 ```csharp
-using ToonNet;
+using ToonNetSerializer;
 
 var payload = new
 {
@@ -63,7 +63,7 @@ users[2]{id,name,role}:
 ### Decode
 
 ```csharp
-using ToonNet;
+using ToonNetSerializer;
 
 const string toon = """
 users[2]{id,name,role}:
