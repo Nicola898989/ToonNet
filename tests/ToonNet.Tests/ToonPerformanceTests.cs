@@ -1,7 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
+using Microsoft.VisualBasic.FileIO;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -175,5 +178,191 @@ public class ToonPerformanceTests
         _output.WriteLine($"Handling 50 items with 1000-char strings took: {sw.ElapsedMilliseconds}ms");
         Assert.NotNull(result);
         Assert.True(sw.ElapsedMilliseconds < 500);
+    }
+
+    [Fact]
+    public void Comparison_QueryDataCsv_ToonVsJson_TotalsAndDifference()
+    {
+        var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        var csvPath = Path.Combine(projectRoot, "query_data.csv");
+        if (!File.Exists(csvPath))
+        {
+            _output.WriteLine($"File CSV non trovato in {csvPath}, test ignorato");
+            return;
+        }
+
+        long totalJsonBytes = 0;
+        long totalToonBytes = 0;
+        int jsonCells = 0;
+        int invalidJsonCells = 0;
+
+        using var parser = new TextFieldParser(csvPath)
+        {
+            TextFieldType = FieldType.Delimited,
+            Delimiters = new[] { "," },
+            HasFieldsEnclosedInQuotes = true,
+            TrimWhiteSpace = false
+        };
+
+        // Skip header row
+        _ = parser.ReadFields();
+
+        while (!parser.EndOfData)
+        {
+            var fields = parser.ReadFields();
+            if (fields == null)
+                continue;
+
+            foreach (var cell in fields)
+            {
+                if (string.IsNullOrWhiteSpace(cell))
+                    continue;
+
+                var trimmed = cell.Trim();
+                if (!(trimmed.StartsWith("{") || trimmed.StartsWith("[")))
+                    continue;
+
+                try
+                {
+                    using var jsonDoc = JsonDocument.Parse(trimmed);
+                    var root = jsonDoc.RootElement.Clone();
+
+                    var jsonBytes = Encoding.UTF8.GetByteCount(trimmed);
+                    var toon = ToonNet.Encode(root);
+                    var toonBytes = Encoding.UTF8.GetByteCount(toon);
+
+                    totalJsonBytes += jsonBytes;
+                    totalToonBytes += toonBytes;
+                    jsonCells++;
+                }
+                catch (JsonException)
+                {
+                    invalidJsonCells++;
+                }
+            }
+        }
+
+        Assert.True(jsonCells > 0, "Nessuna cella JSON valida trovata in query_data.csv");
+
+        var difference = totalJsonBytes - totalToonBytes;
+        _output.WriteLine($"Celle JSON analizzate: {jsonCells}");
+        if (invalidJsonCells > 0)
+            _output.WriteLine($"Celle JSON scartate: {invalidJsonCells}");
+        _output.WriteLine($"Totale JSON (byte): {totalJsonBytes}");
+        _output.WriteLine($"Totale TOON (byte): {totalToonBytes}");
+        _output.WriteLine($"Differenza JSON-TOON (byte): {difference}");
+    }
+
+    [Fact]
+    public void Comparison_QueryDataCsv_PerRowCellDifferences()
+    {
+        var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        var csvPath = Path.Combine(projectRoot, "query_data.csv");
+        if (!File.Exists(csvPath))
+        {
+            _output.WriteLine($"File CSV non trovato in {csvPath}, test ignorato");
+            return;
+        }
+
+        int rowIndex = 1; // header is row 1
+        int processedCells = 0;
+
+        using var parser = new TextFieldParser(csvPath)
+        {
+            TextFieldType = FieldType.Delimited,
+            Delimiters = new[] { "," },
+            HasFieldsEnclosedInQuotes = true,
+            TrimWhiteSpace = false
+        };
+
+        // Skip header row
+        _ = parser.ReadFields();
+
+        while (!parser.EndOfData)
+        {
+            var fields = parser.ReadFields();
+            rowIndex++;
+
+            if (fields == null)
+                continue;
+
+            for (int i = 0; i < fields.Length; i++)
+            {
+                var cell = fields[i];
+                if (string.IsNullOrWhiteSpace(cell))
+                    continue;
+
+                var jsonText = TryExtractJsonFromCell(cell);
+                if (jsonText == null)
+                    continue;
+
+                try
+                {
+                    using var jsonDoc = JsonDocument.Parse(jsonText);
+                    var root = jsonDoc.RootElement.Clone();
+
+                    var jsonBytes = Encoding.UTF8.GetByteCount(jsonText);
+                    var toon = ToonNet.Encode(root);
+                    var toonBytes = Encoding.UTF8.GetByteCount(toon);
+                    var diff = jsonBytes - toonBytes;
+
+                    processedCells++;
+                    _output.WriteLine($"Riga {rowIndex}, Colonna {i + 1}: JSON {jsonBytes} bytes, TOON {toonBytes} bytes, diff (JSON-TOON) {diff}");
+                }
+                catch (JsonException)
+                {
+                    _output.WriteLine($"Riga {rowIndex}, Colonna {i + 1}: JSON rilevato ma non parsabile");
+                }
+            }
+        }
+
+        Assert.True(processedCells > 0, "Nessuna cella contenente JSON valida trovata in query_data.csv");
+    }
+
+    private static string? TryExtractJsonFromCell(string cell)
+    {
+        var firstObject = cell.IndexOf('{');
+        var firstArray = cell.IndexOf('[');
+
+        int start = -1;
+        char close = default;
+
+        if (firstObject >= 0 && (firstArray < 0 || firstObject < firstArray))
+        {
+            start = firstObject;
+            close = '}';
+        }
+        else if (firstArray >= 0)
+        {
+            start = firstArray;
+            close = ']';
+        }
+        else
+        {
+            return null;
+        }
+
+        for (int end = cell.LastIndexOf(close); end >= start && end >= 0;)
+        {
+            var length = end - start + 1;
+            if (length <= 0)
+                break;
+
+            var candidate = cell.Substring(start, length).Trim();
+            try
+            {
+                using var _ = JsonDocument.Parse(candidate);
+                return candidate;
+            }
+            catch (JsonException)
+            {
+                var nextEnd = cell.LastIndexOf(close, end - 1);
+                if (nextEnd < start)
+                    break;
+                end = nextEnd;
+            }
+        }
+
+        return null;
     }
 }
