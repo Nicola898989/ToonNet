@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using ToonNetSerializer.Shared;
 
 namespace ToonNetSerializer.Encode;
 
@@ -441,6 +443,9 @@ internal class ValueEncoder
 
         if (value is JsonElement element)
             return element;
+
+        if (value is DataTable table)
+            return DataTableAdapter.ToJsonElement(table, _serializerOptions);
 
         var runtimeType = value.GetType();
         var json = JsonSerializer.Serialize(value, runtimeType, _serializerOptions);

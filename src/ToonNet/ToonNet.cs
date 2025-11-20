@@ -1,8 +1,10 @@
 using System;
+using System.Data;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using ToonNetSerializer.Decode;
 using ToonNetSerializer.Encode;
+using ToonNetSerializer.Shared;
 
 namespace ToonNetSerializer;
 
@@ -70,6 +72,12 @@ public static class ToonNet
 
         if (node == null)
             return default;
+
+        if (typeof(T) == typeof(DataTable))
+        {
+            var table = DataTableAdapter.FromJsonNode(node);
+            return (T)(object)table;
+        }
 
         var json = node.ToJsonString();
         return JsonSerializer.Deserialize<T>(json);

@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -492,6 +494,215 @@ public class ToonEncoderTests
         Assert.IsType<JsonObject>(items[0]);
         Assert.Empty(items[0]!.AsObject());
         Assert.Equal(5, items[1]!["id"]!.AsValue().GetValue<long>());
+    }
+
+    [Fact]
+    public void Encode_DataTable_RoundTrips()
+    {
+        var table = new DataTable("Users");
+        table.Columns.Add("Id", typeof(int));
+        table.Columns.Add("Name", typeof(string));
+        table.Columns.Add("Active", typeof(bool));
+        table.Rows.Add(1, "Alice", true);
+        table.Rows.Add(2, "Bob", false);
+
+        var toon = ToonNet.Encode(table);
+
+        Assert.False(string.IsNullOrWhiteSpace(toon));
+
+        var decoded = ToonNet.Decode<DataTable>(toon);
+
+        Assert.NotNull(decoded);
+        Assert.Equal("Users", decoded!.TableName);
+        Assert.Equal(2, decoded.Rows.Count);
+
+        Assert.Equal(1, decoded.Rows[0].Field<int>("Id"));
+        Assert.Equal("Alice", decoded.Rows[0].Field<string>("Name"));
+        Assert.True(decoded.Rows[0].Field<bool>("Active"));
+
+        Assert.Equal(2, decoded.Rows[1].Field<int>("Id"));
+        Assert.Equal("Bob", decoded.Rows[1].Field<string>("Name"));
+        Assert.False(decoded.Rows[1].Field<bool>("Active"));
+    }
+
+    [Fact]
+    public void Encode_DataTable_WithMultipleTypes_RoundTrips()
+    {
+        var table = new DataTable("Mixed");
+        table.Columns.Add("Id", typeof(int));
+        table.Columns.Add("BigNumber", typeof(long));
+        table.Columns.Add("Amount", typeof(decimal));
+        table.Columns.Add("Ratio", typeof(double));
+        table.Columns.Add("Name", typeof(string));
+        table.Columns.Add("Active", typeof(bool));
+
+        table.Rows.Add(1, 1234567890123L, 12.34m, 0.25, "Alpha", true);
+        table.Rows.Add(2, 9999999999999L, 99.99m, -5.5, "Beta", false);
+        table.Rows.Add(3, 7777777L, DBNull.Value, DBNull.Value, DBNull.Value, true);
+
+        var toon = ToonNet.Encode(table);
+        Assert.False(string.IsNullOrWhiteSpace(toon));
+
+        var decoded = ToonNet.Decode<DataTable>(toon);
+        Assert.NotNull(decoded);
+        Assert.Equal(table.TableName, decoded!.TableName);
+        Assert.Equal(table.Rows.Count, decoded.Rows.Count);
+
+        Assert.Equal(1234567890123L, decoded.Rows[0].Field<long>("BigNumber"));
+        Assert.Equal(12.34m, decoded.Rows[0].Field<decimal>("Amount"));
+        Assert.Equal(0.25, decoded.Rows[0].Field<double>("Ratio"));
+        Assert.Equal("Alpha", decoded.Rows[0].Field<string>("Name"));
+        Assert.True(decoded.Rows[0].Field<bool>("Active"));
+
+        Assert.Equal(9999999999999L, decoded.Rows[1].Field<long>("BigNumber"));
+        Assert.Equal(99.99m, decoded.Rows[1].Field<decimal>("Amount"));
+        Assert.Equal(-5.5, decoded.Rows[1].Field<double>("Ratio"));
+        Assert.Equal("Beta", decoded.Rows[1].Field<string>("Name"));
+        Assert.False(decoded.Rows[1].Field<bool>("Active"));
+
+        Assert.True(decoded.Rows[2].IsNull("Amount"));
+        Assert.True(decoded.Rows[2].IsNull("Ratio"));
+        Assert.True(decoded.Rows[2].IsNull("Name"));
+    }
+
+    [Fact]
+    public void Encode_DataTable_ManyRows_RoundTrips()
+    {
+        var table = new DataTable("Bulk");
+        table.Columns.Add("Id", typeof(int));
+        table.Columns.Add("Name", typeof(string));
+        table.Columns.Add("Active", typeof(bool));
+
+        for (int i = 1; i <= 50; i++)
+        {
+            table.Rows.Add(i, $"User_{i}", i % 2 == 0);
+        }
+
+        var toon = ToonNet.Encode(table);
+        Assert.False(string.IsNullOrWhiteSpace(toon));
+
+        var decoded = ToonNet.Decode<DataTable>(toon);
+        Assert.NotNull(decoded);
+        Assert.Equal(50, decoded!.Rows.Count);
+        Assert.Equal("User_1", decoded.Rows[0].Field<string>("Name"));
+        Assert.Equal(50, decoded.Rows[49].Field<int>("Id"));
+        Assert.True(decoded.Rows[49].Field<bool>("Active"));
+    }
+
+    [Fact]
+    public void Encode_DataTable_WithConstraintsAndNullables_RoundTrips()
+    {
+        var table = new DataTable("Constraints");
+        var id = new DataColumn("Id", typeof(int)) { AllowDBNull = false, Unique = true };
+        var email = new DataColumn("Email", typeof(string)) { AllowDBNull = false, Unique = true };
+        var nickname = new DataColumn("Nickname", typeof(string)) { AllowDBNull = true };
+        table.Columns.Add(id);
+        table.Columns.Add(email);
+        table.Columns.Add(nickname);
+        table.PrimaryKey = new[] { id };
+
+        table.Rows.Add(1, "a@example.com", "alpha");
+        table.Rows.Add(2, "b@example.com", DBNull.Value);
+
+        var toon = ToonNet.Encode(table);
+        Assert.False(string.IsNullOrWhiteSpace(toon));
+
+        var decoded = ToonNet.Decode<DataTable>(toon);
+        Assert.NotNull(decoded);
+        var tableDecoded = decoded!;
+
+        Assert.Equal("Constraints", tableDecoded.TableName);
+        Assert.Equal(2, tableDecoded.Rows.Count);
+        var pk = tableDecoded.PrimaryKey;
+        Assert.NotNull(pk);
+        Assert.Single(pk!);
+        Assert.Equal("Id", pk![0].ColumnName);
+        Assert.True(tableDecoded.Columns["Id"]!.Unique);
+        Assert.False(tableDecoded.Columns["Id"]!.AllowDBNull);
+        Assert.True(tableDecoded.Columns["Email"]!.Unique);
+        Assert.False(tableDecoded.Columns["Email"]!.AllowDBNull);
+        Assert.True(tableDecoded.Columns["Nickname"]!.AllowDBNull);
+
+        Assert.True(tableDecoded.Rows[1].IsNull("Nickname"));
+    }
+
+    [Fact]
+    public void Encode_DataTable_WithRichTypes_RoundTrips()
+    {
+        var table = new DataTable("Rich");
+        table.Columns.Add("Guid", typeof(Guid));
+        table.Columns.Add("When", typeof(DateTimeOffset));
+        table.Columns.Add("Duration", typeof(TimeSpan));
+        table.Columns.Add("Bytes", typeof(byte[]));
+
+        var g1 = Guid.NewGuid();
+        var g2 = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+
+        table.Rows.Add(g1, now, TimeSpan.FromMinutes(5), new byte[] { 1, 2, 3 });
+        table.Rows.Add(g2, now.AddDays(-1), DBNull.Value, DBNull.Value);
+
+        var toon = ToonNet.Encode(table);
+        Assert.False(string.IsNullOrWhiteSpace(toon));
+
+        var decoded = ToonNet.Decode<DataTable>(toon);
+        Assert.NotNull(decoded);
+        var tableDecoded = decoded!;
+        Assert.Equal(2, tableDecoded.Rows.Count);
+
+        Assert.Equal(g1, tableDecoded.Rows[0].Field<Guid>("Guid"));
+        Assert.Equal(now, tableDecoded.Rows[0].Field<DateTimeOffset>("When"));
+        Assert.Equal(TimeSpan.FromMinutes(5), tableDecoded.Rows[0].Field<TimeSpan>("Duration"));
+        Assert.Equal(new byte[] { 1, 2, 3 }, tableDecoded.Rows[0].Field<byte[]>("Bytes"));
+
+        Assert.Equal(g2, tableDecoded.Rows[1].Field<Guid>("Guid"));
+        Assert.Equal(now.AddDays(-1), tableDecoded.Rows[1].Field<DateTimeOffset>("When"));
+        Assert.True(tableDecoded.Rows[1].IsNull("Duration"));
+        Assert.True(tableDecoded.Rows[1].IsNull("Bytes"));
+    }
+
+    [Fact]
+    public void Encode_DataTable_Empty_PreservesSchema()
+    {
+        var table = new DataTable("Empty");
+        table.Columns.Add("Id", typeof(int));
+        table.Columns.Add("Name", typeof(string));
+
+        var toon = ToonNet.Encode(table);
+        Assert.False(string.IsNullOrWhiteSpace(toon));
+
+        var decoded = ToonNet.Decode<DataTable>(toon);
+        Assert.NotNull(decoded);
+        Assert.Equal("Empty", decoded!.TableName);
+        Assert.Equal(0, decoded.Rows.Count);
+        Assert.Equal(new[] { "Id", "Name" }, decoded.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToArray());
+    }
+
+    [Fact]
+    public void Encode_DataTable_SpecialCharactersAndDates_RoundTrips()
+    {
+        var table = new DataTable("Special");
+        table.Columns.Add("Text", typeof(string));
+        table.Columns.Add("Note", typeof(string));
+        table.Columns.Add("Created", typeof(DateTime));
+
+        table.Rows.Add("Hello, world", "Line1\nLine2", new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Utc));
+        table.Rows.Add("With delimiter ; ,", DBNull.Value, new DateTime(1999, 12, 31, 23, 59, 59, DateTimeKind.Utc));
+
+        var toon = ToonNet.Encode(table);
+        Assert.False(string.IsNullOrWhiteSpace(toon));
+
+        var decoded = ToonNet.Decode<DataTable>(toon);
+        Assert.NotNull(decoded);
+        Assert.Equal(2, decoded!.Rows.Count);
+
+        Assert.Equal("Hello, world", decoded.Rows[0].Field<string>("Text"));
+        Assert.Equal("Line1\nLine2", decoded.Rows[0].Field<string>("Note"));
+        Assert.Equal(new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Utc), decoded.Rows[0].Field<DateTime>("Created"));
+
+        Assert.Equal("With delimiter ; ,", decoded.Rows[1].Field<string>("Text"));
+        Assert.True(decoded.Rows[1].IsNull("Note"));
+        Assert.Equal(new DateTime(1999, 12, 31, 23, 59, 59, DateTimeKind.Utc), decoded.Rows[1].Field<DateTime>("Created"));
     }
 
     [Fact]
