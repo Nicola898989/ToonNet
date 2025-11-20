@@ -90,6 +90,38 @@ The same event encoded as JSON would include repeated keys, quotes, and braces, 
 
 ---
 
+### DataTable Round-Trip
+
+```csharp
+using System.Data;
+using ToonNetSerializer;
+
+var table = new DataTable("Users");
+table.Columns.Add("Id", typeof(int));
+table.Columns.Add("Email", typeof(string));
+table.Columns.Add("Active", typeof(bool));
+table.Rows.Add(1, "a@example.com", true);
+table.Rows.Add(2, "b@example.com", false);
+
+var toon = ToonNet.Encode(table);
+/*
+tableName: "Users"
+columns[3]{name,type,allowNull,unique,isPrimaryKey}:
+  Id,System.Int32,true,false,false
+  Email,System.String,true,false,false
+  Active,System.Boolean,true,false,false
+rows[2]{Id,Email,Active}:
+  1,a@example.com,true
+  2,b@example.com,false
+*/
+
+var roundTripped = ToonNet.Decode<DataTable>(toon);
+Console.WriteLine(roundTripped!.Rows.Count); // 2
+Console.WriteLine(roundTripped.Rows[0]["Email"]); // a@example.com
+```
+
+---
+
 ## Configuration Surface
 
 ```csharp
@@ -126,7 +158,10 @@ Use the same option set on both sides when you need lossless round-trips across 
 ## Compatibility
 
 - .NET 10
+- .NET 9
 - .NET 8
+- .NET 7
+- .NET 6
 - .NET Standard 2.0 (covers .NET Framework 4.6.1+, .NET Core 2.0+, Mono, Unity)
 
 ---
